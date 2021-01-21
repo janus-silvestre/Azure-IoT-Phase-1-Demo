@@ -1,0 +1,18 @@
+{
+  "SchemaVersion": 1,
+  "Name": "AzureIoT",
+  "ComponentId": "819255ff-8640-41fd-aea7-f85d34c491d5",
+  "EntryPoint": "/bin/app",
+  "CmdArgs": ["--ConnectionType", "DPS", "--ScopeID", "0ne001FDFEE"],
+  "Capabilities": {
+    "AllowedConnections": [ "global.azure-devices-provisioning.net",
+      "Phase-1-Demo-IoT-Hub.azure-devices.net"
+    ],
+    "Gpio": [],
+    "I2cMaster": [
+      "$I2cMaster2"
+    ],
+    "DeviceAuthentication": "5a105248-ebcc-4def-9016-b7186b4fde44"
+  },
+    "ApplicationType": "Default"
+  }
