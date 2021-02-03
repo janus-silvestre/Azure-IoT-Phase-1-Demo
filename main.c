@@ -254,6 +254,9 @@ static void AdcPollingEventHandler(EventLoopTimer *timer);
 #define MAX_DEVICE_TWIN_PAYLOAD_SIZE 512
 #define TELEMETRY_BUFFER_SIZE 100
 
+//Adc0 is the mapping to the pin for ADC input
+#define ADC_CONTROLLER Adc0
+
 // Usage text for command line arguments in application manifest.
 static const char *cmdLineArgsUsageText =
     "DPS connection type: \" CmdArgs \": [\"--ConnectionType\", \"DPS\", \"--ScopeID\", "
@@ -388,7 +391,7 @@ static void AdcPollingEventHandler(EventLoopTimer *timer)
     uint32_t value;
     //NOTE: replace all instances of SAMPLE_POTENTIOMETER_ADC_CHANNEL 
     //to Adc0 (Hardware mapping to the pin)
-    int result = ADC_Poll(adcControllerFd, Adc0, &value);
+    int result = ADC_Poll(adcControllerFd, ADC_CONTROLLER, &value);
     if(result = -1)
     {
         Log_Debug("ADC_Poll failed with error: %s (%d)\n", strerror(errno), errno);
@@ -565,6 +568,32 @@ static ExitCode InitPeripheralsAndHandlers(void)
     if (azureTimer == NULL) {
         return ExitCode_Init_AzureTimer;
     }
+
+    //Adding ADC initialisations
+    adcControllerFd = ADC_Open(ADC_CONTROLLER);
+    if(adcControllerFd == -1)
+    {
+        Log_Debug("ADC_Open failed with error: %s (%d)\n", strerror(errno), errno);
+        return ExitCode_Init_AdcOpen;
+    }
+
+    bitCount = ADC_GetSampleBitCount(adcControllerFd, ADC_CONTROLLER);
+    if(bitCount == 0)
+    {
+        Log_Debug("ADC_GetSampleBitCount returned sample size of 0 bits\n");
+        return ExitCode_Init_UnexpectedBitCount;
+    }
+
+    int result = ADC_SetReferenceVoltage(adcControllerFd, ADC_CONTROLLER, maxVoltage);
+    if(result == -1)
+    {
+        Log_Debug("ADC_SetReferenceVoltage failed with error: %s (%d)\n",
+                strerror(errno), errno);
+        return ExitCode_Init_SetRefVoltage;
+    }
+
+    //No need to create event loop timer for adcpolling event as we're going to use 
+    //the azuretimereventhandler and call the ADC poll function in this
 
     return ExitCode_Success;
 }
