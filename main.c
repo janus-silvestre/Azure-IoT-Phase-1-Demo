@@ -249,6 +249,7 @@ static int bitCount = -1;
 static float maxVoltage = 2.5f;
 
 static void AdcPollingEventHandler(EventLoopTimer *timer);
+static float ADCGetTemperature();
 
 // Constants
 #define MAX_DEVICE_TWIN_PAYLOAD_SIZE 512
@@ -404,8 +405,26 @@ static void AdcPollingEventHandler(EventLoopTimer *timer)
     Log_Debug("The out sample value is %.3f \n", voltage);
 }
 
+//Refactoring adc polling such that it doesnt use its own timer anymore
+//It will instead be called in the AzureTimerEventHandler
+static float ADCGetTemperature()
+{
+    uint32_t value;
+    //NOTE: replace all instances of SAMPLE_POTENTIOMETER_ADC_CHANNEL 
+    //to Adc0 (Hardware mapping to the pin)
+    int result = ADC_Poll(adcControllerFd, ADC_CONTROLLER, &value);
+    if(result = -1)
+    {
+        Log_Debug("ADC_Poll failed with error: %s (%d)\n", strerror(errno), errno);
+        exitCode = ExitCode_AdcTimerHandler_Poll;
+        return;
+    }
 
-
+    //NOTE: need to write degree/volt function to convert back to the actual temperature
+    float voltage = ((float)value * maxVoltage) / (float)((1 << bitCount) - 1);
+    Log_Debug("The out sample value is %.3f \n", voltage);
+    return voltage;
+}
 
 /// <summary>
 ///     Parse the command line arguments given in the application manifest.
@@ -631,6 +650,7 @@ static void ClosePeripheralsAndHandlers(void)
 
     CloseFdAndPrintError(sendMessageButtonGpioFd, "SendMessageButton");
     CloseFdAndPrintError(deviceTwinStatusLedGpioFd, "StatusLed");
+    CloseFdAndPrintError(adcControllerFd, "ADC");
 
     free(ioTEdgeRootCACertContent);
     ioTEdgeRootCACertContent = NULL;
@@ -1075,7 +1095,12 @@ static void SendRealTemeletry(void)
     // temperature += delta;
 
     //TO THIS:
-    float temperature = lp_get_temperature();
+    //float temperature = lp_get_temperature();
+
+    //CHANGING THIS AGAIN
+    //Using ADC to send temperature instead of onboard sensor
+    //Date: 03/02/2021
+    float temperature = ADCGetTemperature();
 
     int len =
         snprintf(telemetryBuffer, TELEMETRY_BUFFER_SIZE, "{\"Temperature\":%3.2f}", temperature);
