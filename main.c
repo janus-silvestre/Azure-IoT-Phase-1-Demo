@@ -51,6 +51,7 @@
 #include <applibs/log.h>
 #include <applibs/networking.h>
 #include <applibs/storage.h>
+#include <applibs/adc.h>
 
 // The following #include imports a "sample appliance" definition. This app comes with multiple
 // implementations of the sample appliance, each in a separate directory, which allow the code to
@@ -127,6 +128,15 @@ typedef enum {
     ExitCode_IoTEdgeRootCa_FileRead_Failed = 21,
 
     ExitCode_PayloadSize_TooLarge = 22,
+
+    //Added extra for ADC
+    ExitCode_AdcTimerHandler_Consume = 23,
+    ExitCode_AdcTimerHandler_Poll = 24,
+    ExitCode_Init_AdcOpen = 25,
+    ExitCode_Init_GetBitCount = 26,
+    ExitCode_Init_UnexpectedBitCount = 27,
+    ExitCode_Init_SetRefVoltage = 28,
+    ExitCode_Init_AdcPollTimer = 29
 } ExitCode;
 
 static volatile sig_atomic_t exitCode = ExitCode_Success;
@@ -205,6 +215,8 @@ static void ClosePeripheralsAndHandlers(void);
 // File descriptors - initialized to invalid value
 // Button
 static int sendMessageButtonGpioFd = -1;
+//ADC file descriptor
+static int adcControllerFd = -1;
 
 // LED
 static int deviceTwinStatusLedGpioFd = -1;
@@ -213,6 +225,7 @@ static int deviceTwinStatusLedGpioFd = -1;
 static EventLoop *eventLoop = NULL;
 static EventLoopTimer *buttonPollTimer = NULL;
 static EventLoopTimer *azureTimer = NULL;
+static EventLoopTimer *adcPollTimer = NULL;
 
 // Azure IoT poll periods
 static const int AzureIoTDefaultPollPeriodSeconds = 1;        // poll azure iot every second
@@ -226,6 +239,16 @@ static int telemetryCount = 0;
 // State variables
 static GPIO_Value_Type sendMessageButtonState = GPIO_Value_High;
 static bool statusLedOn = false;
+
+//ADC specific
+//There's more up ahead like file descriptors,etc.
+
+//size of a sample in bits
+static int bitCount = -1;
+//Maximum voltage
+static float maxVoltage = 2.5f;
+
+static void AdcPollingEventHandler(EventLoopTimer *timer);
 
 // Constants
 #define MAX_DEVICE_TWIN_PAYLOAD_SIZE 512
@@ -348,6 +371,23 @@ static void AzureTimerEventHandler(EventLoopTimer *timer)
         IoTHubDeviceClient_LL_DoWork(iothubClientHandle);
     }
 }
+
+//Adding adc polling eventhandler
+//Handle polling timer event: takes a single reading from ADC channelId,
+//every second, outputting result
+//NOTE: will need to modify this to replace sendRealTelemetry()
+
+static void AdcPollingEventHandler(EventLoopTimer *timer)
+{
+    if(ConsumeEventLoopTimerEvent(timer) != 0)
+    {
+        exitCode = 
+    }
+
+}
+
+
+
 
 /// <summary>
 ///     Parse the command line arguments given in the application manifest.
