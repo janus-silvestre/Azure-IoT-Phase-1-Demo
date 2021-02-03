@@ -381,9 +381,24 @@ static void AdcPollingEventHandler(EventLoopTimer *timer)
 {
     if(ConsumeEventLoopTimerEvent(timer) != 0)
     {
-        exitCode = 
+        exitCode = ExitCode_AdcTimerHandler_Consume;
+        return;
     }
 
+    uint32_t value;
+    //NOTE: replace all instances of SAMPLE_POTENTIOMETER_ADC_CHANNEL 
+    //to Adc0 (Hardware mapping to the pin)
+    int result = ADC_Poll(adcControllerFd, Adc0, &value);
+    if(result = -1)
+    {
+        Log_Debug("ADC_Poll failed with error: %s (%d)\n", strerror(errno), errno);
+        exitCode = ExitCode_AdcTimerHandler_Poll;
+        return;
+    }
+
+    //NOTE: need to write degree/volt function to convert back to the actual temperature
+    float voltage = ((float)value * maxVoltage) / (float)((1 << bitCount) - 1);
+    Log_Debug("The out sample value is %.3f \n", voltage);
 }
 
 
