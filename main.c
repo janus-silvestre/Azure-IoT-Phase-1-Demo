@@ -247,6 +247,8 @@ static bool statusLedOn = false;
 static int bitCount = -1;
 //Maximum voltage
 static float maxVoltage = 2.5f;
+//Sample maxTemp to convert back the raw ADC value to temperature
+static float maxTemperature = 100.0f;
 
 static void AdcPollingEventHandler(EventLoopTimer *timer);
 static float ADCGetTemperature();
@@ -420,10 +422,9 @@ static float ADCGetTemperature()
         return;
     }
 
-    //NOTE: need to write degree/volt function to convert back to the actual temperature
-    float voltage = ((float)value * maxVoltage) / (float)((1 << bitCount) - 1);
-    Log_Debug("The out sample value is %.3f \n", voltage);
-    return voltage;
+    float temperature = ((float)value * maxTemperature) / (float)((1 << bitCount) - 1);
+    Log_Debug("The temperature from ADC is %.3f \n", temperature);
+    return temperature;
 }
 
 /// <summary>
