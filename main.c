@@ -225,7 +225,7 @@ static int deviceTwinStatusLedGpioFd = -1;
 static EventLoop *eventLoop = NULL;
 static EventLoopTimer *buttonPollTimer = NULL;
 static EventLoopTimer *azureTimer = NULL;
-static EventLoopTimer *adcPollTimer = NULL;
+
 
 // Azure IoT poll periods
 static const int AzureIoTDefaultPollPeriodSeconds = 1;        // poll azure iot every second
@@ -245,7 +245,7 @@ static bool statusLedOn = false;
 
 //size of a sample in bits
 static int bitCount = -1;
-//Maximum voltage
+//Maximum voltage, Sphere can only take 2.5V reference
 static float maxVoltage = 2.5f;
 //Sample maxTemp to convert back the raw ADC value to temperature
 static float maxTemperature = 100.0f;
@@ -376,35 +376,6 @@ static void AzureTimerEventHandler(EventLoopTimer *timer)
     if (iothubClientHandle != NULL) {
         IoTHubDeviceClient_LL_DoWork(iothubClientHandle);
     }
-}
-
-//Adding adc polling eventhandler
-//Handle polling timer event: takes a single reading from ADC channelId,
-//every second, outputting result
-//NOTE: will need to modify this to replace sendRealTelemetry()
-
-static void AdcPollingEventHandler(EventLoopTimer *timer)
-{
-    if(ConsumeEventLoopTimerEvent(timer) != 0)
-    {
-        exitCode = ExitCode_AdcTimerHandler_Consume;
-        return;
-    }
-
-    uint32_t value;
-    //NOTE: replace all instances of SAMPLE_POTENTIOMETER_ADC_CHANNEL 
-    //to Adc0 (Hardware mapping to the pin)
-    int result = ADC_Poll(adcControllerFd, ADC_CONTROLLER, &value);
-    if(result = -1)
-    {
-        Log_Debug("ADC_Poll failed with error: %s (%d)\n", strerror(errno), errno);
-        exitCode = ExitCode_AdcTimerHandler_Poll;
-        return;
-    }
-
-    //NOTE: need to write degree/volt function to convert back to the actual temperature
-    float voltage = ((float)value * maxVoltage) / (float)((1 << bitCount) - 1);
-    Log_Debug("The out sample value is %.3f \n", voltage);
 }
 
 //Refactoring adc polling such that it doesnt use its own timer anymore
