@@ -1072,6 +1072,7 @@ static void SendRealTemeletry(void)
     //CHANGING THIS AGAIN
     //Using ADC to send temperature instead of onboard sensor
     //Date: 03/02/2021
+    Log_Debug("Attempting to read from ADC: ");
     float temperature = ADCGetTemperature();
 
     int len =

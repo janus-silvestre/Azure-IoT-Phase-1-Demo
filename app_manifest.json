@@ -12,6 +12,7 @@
     "I2cMaster": [
       "$I2cMaster2"
     ],
+    "Adc":["$AVNET_MT3620_SK_ADC_CONTROLLER0"],
     "DeviceAuthentication": "5a105248-ebcc-4def-9016-b7186b4fde44"
   },
     "ApplicationType": "Default"
