@@ -33,52 +33,6 @@ typedef enum
 
 typedef unint8_t XMTCODE;
 
-
-
-//Struct representation of the information
-//This will be used to build the actual frame (byte array)
-typedef struct MessageFrame
-{
-    char delimiter;
-    char* address; //Assuming it's using 5 byte unique addresses for now
-    //Ignore expansion bytes for now, assume it's 0 
-    //char* expansionBytes; 
-    char command;
-    char byteCount;
-    char* data; //Variable length so left as a char pointer
-    char checkByte;
-} MessageFrame;
-
-//Struct representation of the Delimitter subfields
-//from most significant bits to least significant bits
-typedef struct Delimiter
-{
-    uint8_t addressType; //bit 7
-    uint8_t noExpansionByte; //bits 6 and 5
-    uint8_t physicalLayerType; //bits 4 and 3
-    DelimFrame_Type frameType; //bits 2-0
-} Delimiter;
-
-//Struct representation of the subfields of a 
-//Unique Address field
-typedef struct UniqueAddress
-{
-    uint8_t masterAddress; //0 Secondary Master, 1 Primary Master
-    uint8_t burstMode; //Set to 1 if slave device is in burst mode, 0 otherwise
-    char deviceTypeCode[2]; 
-    char deviceID[3];    
-} UniqueAddress;
-
-
-typedef enum 
-{
-    BACK = 1, //Burst frame
-    STX = 2, //Master to Field Device
-    ACK = 6 //Field Device to Master
-} Delim_Frame;
-
-typedef uint8_t FrameType;
-
 //Device type code for Honeywell STT700 
 #define DEVICE_TYPE_CODE 0x2B;
 
@@ -187,8 +141,6 @@ typedef enum
 
 typedef uint8_t DeviceStatus;
 
-
-//Need to change data types
 void waitForCommand();
 void sendResponse();
 char* buildFrame(MessageFrame frame);

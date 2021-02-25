@@ -233,6 +233,9 @@ uint8_t* buildResponseFrame(uint8_t* delim, uint8_t* address, uint8_t* command,
 
 
 //NOTE: Data types for function parameters will need to be adapted/changed
+//NOTE: The Physical Layer SAPS will now have to be implemented in the real time app
+//      for the Master MAC 
+
 
 /*Data Link Layer SAPs for Master Application layer*/
 
