@@ -1,126 +1,102 @@
-#include "HARTtoUART.h"
+#include "hart_library.h"
 #include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
 
-//Configures the bits in the Delimiter field of the HART PDU
-//The Delimiter field is comprised of 1 byte represented as a char
-char* buildDelimiterField(Delimiter delim)
+/*
+Author: Janus Silvestre
+HART Protocol stack library functions
+This library is to be used for the Azure Sphere MCU to emulate a 
+secondary master to poll a HART device for additional diagnostics
+through the use of Command 48.
+*/
+
+//Configures the bitfield in the Delimiter field of the HART PDU
+//The Delimiter field is 1 byte long
+//Address Type is assumed to be unique, Frame Type will always be MasterToFieldDevice
+uint8_t* buildDelimiterField()
 {
-    char* delimField = (char*)malloc(sizeof(char));
+    uint8_t* delimField = (uint8_t*)malloc(sizeof(uint8_t));
     *delimField = 0x00;
 
-    if(delim.addressType == 1) //Unique 5 byte addressfield
-    {
-        *delimField |= 0x80; //set the bit to 1   
-    }
-    //else it remains a 0
+    *delimField |= UNIQUEADDRESS; 
 
     //Leave expansion bytes bits as 0
-
     //Leave physical layer bits as 0 (asynchronous FSK)
 
     //Frame Type
-    if(delim.frameType == BACK)
-    {
-        *delimField |= 0x01;
-    }
-    else if (delim.frameType = STX)
-    {
-        *delimField |= 0x02;
-    }
-    else
-    {
-        *delimField |= 0x06;
-    }
-    
+    *delimField |= BACK;
+
     return delimField;
 }
 
-//Configures a 5 byte HART Unique Address Field
-char* buildAddressField(UniqueAddress address)
+/*
+Configures a 5 byte HART Unique Address Field
+Parameters:
+deviceTypeCode needs to be the 2 bytes
+deviceID needs to be 3 bytes
+*/
+
+uint8_t* buildAddressField(uint8_t* deviceTypeCode, uint8_t* deviceID)
 {
-    char* addressField = (char*)malloc(5 * sizeof(char));
-    // *addressField = 0x0000000000;
+    uint8_t* addressField = (uint8_t*)malloc(5 * sizeof(uint8_t));
 
-    // if(address.masterAddress == 1)
-    // {
-    //     //Set MSB to 1
-    //     *addressField |= 0x8000000000;
-    // }
+    //Create a buffer for the first two bytes so they can be set
+    uint8_t firstTwoBytes[2];
+    memcpy(firstTwoBytes, deviceTypeCode, 2 * sizeof(uint8_t)); 
 
-    // if(address.burstMode == 1)
-    // {
-    //     *addressField |= 0x4000000000;
-    // }
+    //Copy the first byte so that the 2 most signifcant bits can be set
+    uint8_t firstByte = firstTwoBytes[0];
 
-    // //Not sure if this will work
-    // *addressField |= address.deviceTypeCode << 24; 
-
-    // //Not sure if this will work either
-    // //Trying to set the last 3 bytes to the device ID, not sure if it automatically pads it
-    // *addressField |= address.deviceID; 
-
-    //Refactoring this as well
-
-    char* firstTwoBytes = memcpy(firstTwoBytes, address.deviceTypeCode, 2 * sizeof(char)); 
-
-    //Copy the first byte only so that the 2 most signifcant bits can be set
-    char firstByte = firstTwoBytes[0];
-
-    if(address.masterAddress == 1)
-    {
-        firstByte |= 0x80;
-    }
-
-    if(address.burstMode == 1)
-    {
-        firstByte |= 0x40;
-    }
+    //Set bit 7 and 6 to 0 (Secondary Master and not a Field Device)
+    firstByte &= ~(1<<7);
+    firstByte &= ~(1<<6);
 
     //Then copy back the modified first byte
-    memcpy(&firstTwoBytes[0], firstByte, sizeof(char));
+    memcpy(&firstTwoBytes[0], &firstByte, sizeof(uint8_t));
 
     //Finally build the actual 5 byte address field
-    memcpy(&addressField[0], firstTwoBytes, 2 * sizeof(char));
-    memcpy(&addressField[2], address.deviceID, 3 * sizeof(char));
+    memcpy(&addressField[0], &firstTwoBytes, 2 * sizeof(uint8_t));
+    memcpy(&addressField[2], deviceID, 3 * sizeof(uint8_t));
 
     return addressField;
 }
 
-//Configures the Command field 
-//Pass COMMAND_48 to this
-char* buildCommandField(int command)
+/*
+Configures the Command field 
+Parameters:
+Takes in the command number and converts to the respective binary for the 
+1 byte Command field
+*/
+uint8_t* buildCommandField(int command)
 {
-    char* commandField = (char*)malloc(sizeof(char));
+    uint8_t* commandField = (uint8_t*)malloc(sizeof(uint8_t));
     *commandField = command;
     return commandField;
 }
 
 //Configures the Byte Count field which specifies
-//how long the Data field is
-char* buildByteCountField(int byteCount)
+//how long the Data field is, the data field for specific commands
+//are known so no need to count them
+//May refactor this in the future to use a lookup table instead
+uint8_t* buildByteCountField(int byteCount)
 {
-    char* byteCountField = (char*)malloc(sizeof(char));
+    uint8_t* byteCountField = (uint8_t*)malloc(sizeof(uint8_t));
     *byteCountField = byteCount;
     return byteCountField;
 }
 
-//Checks if certain bits in a byte stream are
-//set to 1 by checking it against a mask
-//For example:
-//1010 (byte stream to test)
-//0010 (mask)
-//0010 (result)
-//might need to change datatypes? 
-bool checkBits(int mask, char* byteStream)
+//Checks if the kth bit is set in byte n 
+bool checkBits(uint8_t* n,uint8_t k)
 {
-    if((*byteStream & mask) == mask)
+    if(*n & (1 << (k)))
     {
         return true;
     }
     else
     {
         return false;
-    }    
+    }  
 }
 
 //Builds Command 48 Data field byte stream
@@ -129,8 +105,8 @@ bool checkBits(int mask, char* byteStream)
 //as follows:
 //0 1 2 3 4 5 6 0
 //Tested bit shifting algo on a sample and it seems to work
-char* configureCommand48Response(char* byte1, char* byte2, char* byte3,
-                                char* byte4, char* byte5, char* byte6)
+uint8_t* configureCommand48Response(uint8_t* byte1, uint8_t* byte2, uint8_t* byte3,
+                                uint8_t* byte4, uint8_t* byte5, uint8_t* byte6)
 {
     char* command48 = malloc(8 * sizeof(char));
     // *command48 = 0x0000000000000000;
@@ -157,6 +133,10 @@ char* configureCommand48Response(char* byte1, char* byte2, char* byte3,
 }
 
 //Build Byte 1 of Command 48 response
+//This function was originally to be used for a simulated slave using the 
+//Arduino, building the actual data request bytes is not required by the master
+//as it will simply send out the previous response byte (as per Command 48 
+//specification)
 char* buildByte1(Command48_Byte1 byte1)
 {
     char* byte1Field = (char*)malloc(sizeof(char));
@@ -191,50 +171,55 @@ char* buildByte1(Command48_Byte1 byte1)
 //Not writing the functions for the other bytes as it doesnt matter for now
 //but same concept applies
 
-//Calculates the checksum for entire frame
-char* checksum(char* frame, int length)
+/*
+Calculates the checksum for entire frame
+Parameters:
+frame - framefields combined from delimiter to last data byte
+length - number of bytes from delim to data field
+*/
+uint8_t checksum(uint8_t* frame, int length)
 {
     int i;
-    char checksum = 0x00;
+    uint8_t checksum = 0x00;
     for(i = 0; i < length; i++)
     {
-        char buffer = frame[i];
+        uint8_t buffer = frame[i];
         checksum ^= buffer;
     }
     return checksum;
 }
 
 //Frame before adding the checksum
-char* buildResponseFrame(char* delim, char* address, char* command,
-                        char* byteCount, char* data)
+uint8_t* addFrames(uint8_t* delim, uint8_t* address, uint8_t* command,
+                        uint8_t* byteCount, uint8_t* data)
 {
-    char* frame = (char*)malloc(16 * sizeof(char));
-    memcpy(&finalFrame[0], delim, sizeof(char));
-    memcpy(&finalFrame[1], address, 5 * sizeof(char));
-    memcpy(&finalFrame[6], command, sizeof(char));
-    memcpy(&finalFrame[7], byteCount, sizeof(char));
-    memcpy(&finalFrame[8], data, 8 * sizeof(char));
+    uint8_t* frame = (char*)malloc(16 * sizeof(uint8_t));
+    memcpy(&finalFrame[0], delim, sizeof(uint8_t));
+    memcpy(&finalFrame[1], address, 5 * sizeof(uint8_t));
+    memcpy(&finalFrame[6], command, sizeof(uint8_t));
+    memcpy(&finalFrame[7], byteCount, sizeof(uint8_t));
+    memcpy(&finalFrame[8], data, 8 * sizeof(uint8_t));
 
     return frame;
 }
 
-
-//Builds the final HART frame to send off through UART
-char* buildResponseFrame(char* delim, char* address, char* command,
-                        char* byteCount, char* data, char* checkByte)
-{
+//Builds the final HART frame to send off through UART by Master MAC
+//state machine
+uint8_t* buildResponseFrame(uint8_t* delim, uint8_t* address, uint8_t* command,
+                        uint8_t* byteCount, uint8_t* data, uint8_t* checkByte)
+{ 
     //Assuming 5 byte unique address field, Command 48 has 8 bytes of data
     //and no expansion field
-    char* finalFrame = (char*)malloc(17 * sizeof(char));
+    uint8_t* finalFrame = (uint8_t*)malloc(17 * sizeof(uint8_t));
 
-    memcpy(&finalFrame[0], delim, sizeof(char));
-    memcpy(&finalFrame[1], address, 5 * sizeof(char));
-    memcpy(&finalFrame[6], command, sizeof(char));
-    memcpy(&finalFrame[7], byteCount, sizeof(char));
-    memcpy(&finalFrame[8], data, 8 * sizeof(char));
-    memcpy(&finalFrame[16], checkByte, sizeof(char));
+    memcpy(&finalFrame[0], delim, sizeof(uint8_t));
+    memcpy(&finalFrame[1], address, 5 * sizeof(uint8_t));
+    memcpy(&finalFrame[6], command, sizeof(uint8_t));
+    memcpy(&finalFrame[7], byteCount, sizeof(uint8_t));
+    memcpy(&finalFrame[8], data, 8 * sizeof(uint8_t));
+    memcpy(&finalFrame[16], checkByte, sizeof(uint8_t));
 
-    //Clean up 
+    //Can clean up here as we have a copy of the entire frame
     free(delim);
     free(address);
     free(command);
@@ -245,11 +230,6 @@ char* buildResponseFrame(char* delim, char* address, char* command,
     return finalFrame;
 }
 
-//NOTE: WORK TO DO
-//NEED TO ADD COMMAND STATUS BYTES before Data field
-
-//NOTE: WORK TO DO
-//MAY NEED TO REFACTOR char* to uint8_t*
 
 
 //NOTE: Data types for function parameters will need to be adapted/changed
@@ -274,6 +254,13 @@ NOTE: still unsure of where preamble is added
 */
 void transmitRequest(int preambleLength, uint8_t* address, uint8_t* cmd, uint8_t* data)
 {
+    uint8_t* delim = buildDelimiterField();
+    //addressField function will be called by APP layer
+    uint8_t* byteCount = buildByteCountField(*cmd);
+    uint8_t* checkByte = addFrames(delim, address, cmd, byteCount, data);
+    uint8_t* responseFrame = buildResponseFrame(delim, address, cmd, byteCount, data, checkByte);
+    
+    //Pass frame to Master MAC state machine to be sent by XMT_MSG
 
 }
 
@@ -290,11 +277,16 @@ void transmitConfirm(int* localStatus, uint8_t* address, uint8_t* cmd, uint8_t* 
 }
 
 /*Physical layer SAPS for Data Link Layer*/
+//These will be in reference to using the DAC8740H in Hart-UART mode
+//Does not include setup such as opening file descriptors,etc
 
 //Passed to Physical layer to undergo physical reset
 void resetRequest()
 {
-
+    //rstFd is the file descriptor from opening the pin as output
+    GPIO_SetValue(rstFd, GPIO_Value_Low);
+    //delay
+    GPIO_SetValue(rstFd, GPIO_Value_High);
 }
 
 //Enables are used to assert carrier and release network
@@ -304,19 +296,32 @@ This SAP is passed to Physical Layer to request it to prepare for data transmiss
 depending on whether the parameter state is HIGH or LOW. Implemented as request to send (RTS) signal in modem.
 May only be issued if the interface is in an idle state (no pending transmitIndicate or transmitConfirm). 
 */
-void enableRequest(State state)
+void enableRequest()
 {
-
+    //Enables the modulator for transmitting
+    GPIO_SetValue(rtsFd, GPIO_Value_Low);
 }
 
 /*
 A receive SAP by the Physical Layer to indicate establishment of communication with peer Physical Layer entity or
 indicate termination of currently established connection depending on whether state is HIGH or LOW.
 SAP is implemented as Carrier Detect (CD) signal from modem. 
-*/
-void enableIndicate(State* state)
-{
 
+Continually polled by RCV or used in interrupt?
+Returns true if a valid carrier is detecting on the line
+*/
+bool enableIndicate()
+{
+    GPIO_Value validCarrier;
+    GPIO_GetValue(cdFd, &carrierDetect);
+    if(validCarrier == GPIO_Value_High)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 /*
@@ -325,6 +330,7 @@ that it will accept no further data. Usually mapped to clear to send (CTS) signa
 */
 void enableConfirm(State* state)
 {
+    //Need to read bit 0 of MODEM_STATUS Register (offset = 20h)
 
 }
 
@@ -350,6 +356,7 @@ void dataConfirm(uint8_t* data)
 /*
 SAP is passed back from Physical Layer to indicate availability of data unit (byte). 
 Implemented and mapped into a "receive data register full" status bit.
+This should be triggered after an interrupt on the mod_status_reg.
 */
 void dataIndicate(uint8_t* data)
 {
@@ -358,10 +365,3 @@ void dataIndicate(uint8_t* data)
 
 /*
 SAP returned by Physical Layer to indicate error in received data. 
-Examples include: parity errors, framing errors, receive data overruns.
-Determined by status registers in the modem.
-*/
-void errorIndicate(PHYERROR status, uint8_t* data)
-{
-
-}

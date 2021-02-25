@@ -1,8 +1,39 @@
 #ifndef HARTtoUART_H
 #define HARTtoUART_H
 
-#include <Arduino.h>
 #include <stdbool.h>
+
+//Bit masks for Delimiter field
+#define UNIQUEADDRESS 0x80
+#define BACK 0x02 //Burst Frame
+#define STX 0x06 //Master to Field Device
+#define ACK 0x01 //Field Device to Master
+
+
+//Timeout values for FSK
+#define CHARACTER_TIME 9.167f //in ms
+#define RT1 (41 * CHARACTER_TIME) //for secondary master
+#define RT2 (8 * CHARACTER_TIME)
+#define STO (28 * CHARATER_TIME)
+
+
+typedef enum 
+{
+    RCV_SUCCESS = 1,
+    RCV_ERR = 2
+} RCVSTATUS;
+
+typedef unint8_t RCVCODE;
+
+typedef enum 
+{
+    XMT_SUCCESS = 1,
+    XMT_ERR = 2
+} XMTSTATUS;
+
+typedef unint8_t XMTCODE;
+
+
 
 //Struct representation of the information
 //This will be used to build the actual frame (byte array)
@@ -18,7 +49,6 @@ typedef struct MessageFrame
     char checkByte;
 } MessageFrame;
 
-typedef uint8_t DelimFrame_Type;
 //Struct representation of the Delimitter subfields
 //from most significant bits to least significant bits
 typedef struct Delimiter
@@ -46,6 +76,8 @@ typedef enum
     STX = 2, //Master to Field Device
     ACK = 6 //Field Device to Master
 } Delim_Frame;
+
+typedef uint8_t FrameType;
 
 //Device type code for Honeywell STT700 
 #define DEVICE_TYPE_CODE 0x2B;
@@ -144,22 +176,34 @@ typedef enum
     FRAMEERROR = 2
 } PHYERROR;
 
+//Critical and non critical status faults for Cmd 48
+typedef enum
+{
+    CONFICORRUPT,
+    CRCFAILURE,
+    DACFAILURE,
+    DIAGNOSTICSFAILURE
+} STATUS;
+
+typedef uint8_t DeviceStatus;
+
+
+//Need to change data types
 void waitForCommand();
 void sendResponse();
 char* buildFrame(MessageFrame frame);
-char* buildDelimiterField(Delimiter delim);
-char* buildAddresField(UniqueAddress address);
-char* buildCommandField(int command);
-char* buildByteCountField(int byteCount);
-bool checkBits(int mask, char* byteStream);
-char* configureCommand48Response(char* byte1, char* byte2, char* byte3,
-                                char* byte4, char* byte5, char* byte6);
+uint8_t* buildDelimiterField();
+uint8_t* buildAddressField(uint8_t* deviceTypeCode, uint8_t* deviceID);
+uint8_t* buildCommandField(int command);
+uint8_t* buildByteCountField(int byteCount);
+bool checkBits(uint8_t* n,uint8_t k);
+uint8_t* configureCommand48Response(uint8_t* byte1, uint8_t* byte2, uint8_t* byte3,
+                                uint8_t* byte4, uint8_t* byte5, uint8_t* byte6);
 char* buildByte1(Command48_Byte1 byte1);
-char* buildByte2(Command48_Byte2 byte2);
-char* checksum(char* frame, int length);
-char* buildResponseFrame(char* delim, char* address, char* command,
-                        char* byteCount, char* data, char* checkByte);
-char* buildFrameForCHK(char* delim, char* address, char* command,
-                        char* byteCount, char* data);
+uint8_t checksum(uint8_t* frame, int length);
+uint8_t* addFrames(uint8_t* delim, uint8_t* address, uint8_t* command,
+                        uint8_t* byteCount, uint8_t* data)
+uint8_t* buildResponseFrame(uint8_t* delim, uint8_t* address, uint8_t* command,
+                        uint8_t* byteCount, uint8_t* data, uint8_t* checkByte);
                         
 #endif
