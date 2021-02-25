@@ -30,6 +30,7 @@ set(Source
     "main.c"
     "eventloop_timer_utilities.c"
     "parson.c"
+    "hart_library.c"
 )
 source_group("Source" FILES ${Source})
 

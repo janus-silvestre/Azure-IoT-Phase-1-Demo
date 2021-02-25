@@ -23,7 +23,7 @@ typedef enum
     RCV_ERR = 2
 } RCVSTATUS;
 
-typedef unint8_t RCVCODE;
+typedef uint8_t RCVCODE;
 
 typedef enum 
 {
@@ -31,7 +31,15 @@ typedef enum
     XMT_ERR = 2
 } XMTSTATUS;
 
-typedef unint8_t XMTCODE;
+typedef uint8_t XMTCODE;
+
+typedef enum
+{
+    CMD_SUCCESS = 1,
+    CMD_ERR = 2
+} CMDSTATUS;
+
+typedef uint8_t CMDCODE;
 
 //Device type code for Honeywell STT700 
 #define DEVICE_TYPE_CODE 0x2B;
@@ -141,9 +149,23 @@ typedef enum
 
 typedef uint8_t DeviceStatus;
 
+//Returned from the APP layer request to send a command
+//to field device with information regarding the response
+//If communication failure is returned (status is set to err),
+//all other fields should be set to null.
+typedef struct Cmd48Response
+{   
+    //True if a response was received,
+    //False if a communication error occured
+    CMDCODE status;
+    uint8_t* address;
+    uint8_t* cmd;
+    uint8_t* data;
+} Cmd48Response;
+
+
 void waitForCommand();
 void sendResponse();
-char* buildFrame(MessageFrame frame);
 uint8_t* buildDelimiterField();
 uint8_t* buildAddressField(uint8_t* deviceTypeCode, uint8_t* deviceID);
 uint8_t* buildCommandField(int command);
@@ -154,7 +176,7 @@ uint8_t* configureCommand48Response(uint8_t* byte1, uint8_t* byte2, uint8_t* byt
 char* buildByte1(Command48_Byte1 byte1);
 uint8_t checksum(uint8_t* frame, int length);
 uint8_t* addFrames(uint8_t* delim, uint8_t* address, uint8_t* command,
-                        uint8_t* byteCount, uint8_t* data)
+                        uint8_t* byteCount, uint8_t* data);
 uint8_t* buildResponseFrame(uint8_t* delim, uint8_t* address, uint8_t* command,
                         uint8_t* byteCount, uint8_t* data, uint8_t* checkByte);
                         

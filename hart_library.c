@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <applibs/gpio.h>
+
 
 /*
 Author: Janus Silvestre
@@ -193,7 +195,7 @@ uint8_t checksum(uint8_t* frame, int length)
 uint8_t* addFrames(uint8_t* delim, uint8_t* address, uint8_t* command,
                         uint8_t* byteCount, uint8_t* data)
 {
-    uint8_t* frame = (char*)malloc(16 * sizeof(uint8_t));
+    uint8_t* finalFrame = (char*)malloc(16 * sizeof(uint8_t));
     memcpy(&finalFrame[0], delim, sizeof(uint8_t));
     memcpy(&finalFrame[1], address, 5 * sizeof(uint8_t));
     memcpy(&finalFrame[6], command, sizeof(uint8_t));
@@ -255,15 +257,15 @@ data : data request bytes for the given command
 Frames the given address, command, data with its delimiter, bytecount and checksum into a HART PDU
 NOTE: still unsure of where preamble is added
 */
-void transmitRequest(int preambleLength, uint8_t* address, uint8_t* cmd, uint8_t* data)
+Cmd48Response transmitRequest(int preambleLength, uint8_t* address, uint8_t* cmd, uint8_t* data)
 {
     uint8_t* delim = buildDelimiterField();
-    //addressField function will be called by APP layer
     uint8_t* byteCount = buildByteCountField(*cmd);
     uint8_t* checkByte = addFrames(delim, address, cmd, byteCount, data);
     uint8_t* responseFrame = buildResponseFrame(delim, address, cmd, byteCount, data, checkByte);
     
-    //Pass frame to Master MAC state machine to be sent by XMT_MSG
+    //Pass frame to Master MAC state machine to be sent by XMT_MSG here
+    //by sending to RTApp through shared buffer
 
 }
 
