@@ -51,6 +51,7 @@
 #include <applibs/log.h>
 #include <applibs/networking.h>
 #include <applibs/storage.h>
+#include <applibs/application.h>
 
 // The following #include imports a "sample appliance" definition. This app comes with multiple
 // implementations of the sample appliance, each in a separate directory, which allow the code to
@@ -127,6 +128,8 @@ typedef enum {
     ExitCode_IoTEdgeRootCa_FileRead_Failed = 21,
 
     ExitCode_PayloadSize_TooLarge = 22,
+
+    ExitCode_Init_Connection = 23
 } ExitCode;
 
 static volatile sig_atomic_t exitCode = ExitCode_Success;
@@ -240,6 +243,19 @@ static const char *cmdLineArgsUsageText =
     "IoTEdge connection type: \" CmdArgs \": [\"--ConnectionType\", \"IoTEdge\", "
     "\"--Hostname\", \"<iotedgedevice_hostname>\", \"--IoTEdgeRootCAPath\", "
     "\"certs/<iotedgedevice_cert_name>\"]\n";
+
+//Intercore communication
+static int sockFd = -1;
+static EventRegistration* socketEventReg = NULL;
+
+//put compoent id from RT app manifest here
+static const char rtAppComponentId[] = "";
+static void SendTimerEventHandler(EventLoopTimer* timer);
+static void SendMessageToRTApp(void);
+static void SocketEventHandler(EventLoop* el, int fd, EventLoop_IoEvents events, 
+                                void* context);
+
+
 
 /// <summary>
 ///     Signal handler for termination requests. This handler must be async-signal-safe.
@@ -484,6 +500,25 @@ static ExitCode InitPeripheralsAndHandlers(void)
     if (azureTimer == NULL) {
         return ExitCode_Init_AzureTimer;
     }
+
+    //Intercore communication
+
+    //Open a connection to RTApp
+    sockFd = Application_Connect(rtAppComponentId);
+    if (sockFd == -1) {
+        Log_Debug("ERROR: Unable to create socket: %d (%s)\n", errno, strerror(errno));
+        return ExitCode_Init_Connection;
+    }
+
+    //Register handler for incoming messages from real-time capable application
+    //Need to fix up which eventloops this is using
+    socketEventReg = EventLoop_RegisterIo(eventLoop, sockFd, EventLoop_Input, SocketEventHandler,
+                                          /* context */ NULL);
+    if (socketEventReg == NULL) {
+        Log_Debug("ERROR: Unable to register socket event: %d (%s)\n", errno, strerror(errno));
+        return ExitCode_Init_RegisterIo;
+    }
+
 
     return ExitCode_Success;
 }
@@ -966,7 +1001,7 @@ static void SendRealTemeletry(void)
         Log_Debug("ERROR: Cannot write telemetry to buffer.\n");
         return;
     }
-    
+
     SendTelemetry(telemetryBuffer);
 
 }

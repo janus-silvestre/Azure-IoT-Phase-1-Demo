@@ -357,4 +357,4 @@ void dataIndicate(uint8_t* data)
 }
 
 /*
-SAP returned by Physical Layer to indicate error in received data. 
+SAP returned by Physical Layer to indicate error in received data.*/
