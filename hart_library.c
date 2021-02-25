@@ -269,18 +269,6 @@ Cmd48Response transmitRequest(int preambleLength, uint8_t* address, uint8_t* cmd
 
 }
 
-/*
-This SAP is returned to the Master Application Layer to communicate the results of a previously executed
-transmitRequest. The localStatus parameter carries the status of the communication routines in the master.
-Master DataLink performs retries as needed. Local status returns either "Success" or "Communication Failure".
-
-The function will set the given parameters. 
-*/
-void transmitConfirm(int* localStatus, uint8_t* address, uint8_t* cmd, uint8_t* data)
-{
-
-}
-
 /*Physical layer SAPS for Data Link Layer*/
 //These will be in reference to using the DAC8740H in Hart-UART mode
 //Does not include setup such as opening file descriptors,etc

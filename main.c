@@ -952,20 +952,21 @@ void SendSimulatedTelemetry(void)
 
 
 //Author:Janus Silvestre
-//Porting code from Sample 2 - Sending Temeletry from IoT Central Tutorial to read
-//onboard sensor and using it to send real temeletry instead of simulated as above
+//Replacing send temperature telemetry with response from field device
+//for HART Command 48
 static void SendRealTemeletry(void)
 {
     static char telemetryBuffer[TELEMETRY_BUFFER_SIZE];
 
-    float temperature = lp_get_temperature();
+    char* response = cmd48Response();
 
     int len =
-        snprintf(telemetryBuffer, TELEMETRY_BUFFER_SIZE, "{\"Temperature\":%3.2f}", temperature);
+        snprintf(telemetryBuffer, TELEMETRY_BUFFER_SIZE, "{\"Field device \":%s}", response);
     if (len < 0 || len >= TELEMETRY_BUFFER_SIZE) {
         Log_Debug("ERROR: Cannot write telemetry to buffer.\n");
         return;
     }
+    
     SendTelemetry(telemetryBuffer);
 
 }
