@@ -474,34 +474,8 @@ static ExitCode InitPeripheralsAndHandlers(void)
         return ExitCode_Init_EventLoop;
     }
 
-    //CHANGED THIS
+    //Added this from LearningPath 
     lp_imu_initialize();
-
-    //CHANGED THIS
-    // // Open SAMPLE_BUTTON_1 GPIO as input
-    // Log_Debug("Opening SAMPLE_BUTTON_1 as input.\n");
-    // sendMessageButtonGpioFd = GPIO_OpenAsInput(SAMPLE_BUTTON_1);
-    // if (sendMessageButtonGpioFd == -1) {
-    //     Log_Debug("ERROR: Could not open SAMPLE_BUTTON_1: %s (%d).\n", strerror(errno), errno);
-    //     return ExitCode_Init_MessageButton;
-    // }
-
-    // // SAMPLE_LED is used to show Device Twin settings state
-    // Log_Debug("Opening SAMPLE_LED as output.\n");
-    // deviceTwinStatusLedGpioFd =
-    //     GPIO_OpenAsOutput(SAMPLE_LED, GPIO_OutputMode_PushPull, GPIO_Value_High);
-    // if (deviceTwinStatusLedGpioFd == -1) {
-    //     Log_Debug("ERROR: Could not open SAMPLE_LED: %s (%d).\n", strerror(errno), errno);
-    //     return ExitCode_Init_TwinStatusLed;
-    // }
-
-    // Set up a timer to poll for button events.
-    // static const struct timespec buttonPressCheckPeriod = {.tv_sec = 0, .tv_nsec = 1000 * 1000};
-    // buttonPollTimer = CreateEventLoopPeriodicTimer(eventLoop, &ButtonPollTimerEventHandler,
-    //                                                &buttonPressCheckPeriod);
-    // if (buttonPollTimer == NULL) {
-    //     return ExitCode_Init_ButtonPollTimer;
-    // }
 
     azureIoTPollPeriodSeconds = AzureIoTDefaultPollPeriodSeconds;
     struct timespec azureTelemetryPeriod = {.tv_sec = azureIoTPollPeriodSeconds, .tv_nsec = 0};
@@ -984,13 +958,6 @@ static void SendRealTemeletry(void)
 {
     static char telemetryBuffer[TELEMETRY_BUFFER_SIZE];
 
-    //MODIFYING THIS:
-    // // Generate a simulated temperature.
-    // static float temperature = 50.0f;                    // starting temperature
-    // float delta = ((float)(rand() % 41)) / 20.0f - 1.0f; // between -1.0 and +1.0
-    // temperature += delta;
-
-    //TO THIS:
     float temperature = lp_get_temperature();
 
     int len =
@@ -1002,31 +969,6 @@ static void SendRealTemeletry(void)
     SendTelemetry(telemetryBuffer);
 
 }
-
-//Code ported over from Lab 2 sample code
-// float lp_get_temperature(void)
-// {
-// 	uint8_t reg;
-// 	axis1bit16_t data_raw_temperature;
-
-// 	if (!initialized)
-// 	{
-// 		return NAN;
-// 	}
-
-// 	lsm6dso_temp_flag_data_ready_get(&dev_ctx, &reg);
-// 	if (reg)
-// 	{   
-// 		/* Read temperature data */
-// 		memset(data_raw_temperature.u8bit, 0x00, sizeof(int16_t));
-// 		lsm6dso_temperature_raw_get(&dev_ctx, data_raw_temperature.u8bit);
-// 		return lsm6dso_from_lsb_to_celsius(data_raw_temperature.i16bit);
-// 	}
-
-// 	return NAN;
-// }
-
-
 
 /// <summary>
 ///     Check whether a given button has just been pressed.
